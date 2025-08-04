@@ -4,14 +4,14 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   StyleSheet,
-  Button,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
+import PopupAlert from './PopupAlert'; // ✅ Importing popup
 
 export default function SignupScreen({ navigation }) {
   const [formData, setFormData] = useState({
@@ -29,14 +29,23 @@ export default function SignupScreen({ navigation }) {
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const backendUrl = 'http://192.168.169.225:5000/signup';
+  const backendUrl = 'http://10.21.202.225:5000/signup';
+
+  const [popupVisible, setPopupVisible] = useState(false); // ✅ Popup state
+  const [popupMessage, setPopupMessage] = useState('');
 
   const showAlert = (title, message) => {
     if (Platform.OS === 'web') {
-      alert(`${title}: ${message}`);
+      setPopupMessage(`${title}: ${message}`);
+      setPopupVisible(true);
     } else {
       Alert.alert(title, message);
     }
+  };
+
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toISOString().split('T')[0];
   };
 
   const onDOBChange = (_event, selectedDate) => {
@@ -47,33 +56,50 @@ export default function SignupScreen({ navigation }) {
     }
   };
 
-  const handleSignup = async () => {
-    const {
-      username,
-      password,
-      confirmPassword,
-      firstName,
-      lastName,
-      email,
-      address,
-      phoneNumber,
-      dob,
-      department,
-      employeeId,
-    } = formData;
+  const validateForm = () => {
+    const { email, password, confirmPassword, phoneNumber } = formData;
 
-    if (
-      !username || !password || !confirmPassword || !firstName || !lastName ||
-      !email || !address || !phoneNumber || !dob || !department || !employeeId
-    ) {
-      showAlert('Validation Error', 'Please fill all the fields.');
-      return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+    const phoneRegex = /^\d{10}$/;
+
+    if (!emailRegex.test(email)) {
+      showAlert('Validation Error', 'Invalid email format.');
+      return false;
+    }
+
+    if (!passwordRegex.test(password)) {
+      showAlert(
+        'Validation Error',
+        'Password must be at least 8 characters long and include uppercase, lowercase, digit, and special character.'
+      );
+      return false;
     }
 
     if (password !== confirmPassword) {
       showAlert('Validation Error', 'Passwords do not match.');
-      return;
+      return false;
     }
+
+    if (!phoneRegex.test(phoneNumber)) {
+      showAlert('Validation Error', 'Phone number must be 10 digits.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSignup = async () => {
+    const requiredFields = Object.entries(formData);
+    for (let [key, value] of requiredFields) {
+      if (!value) {
+        showAlert('Validation Error', `Please enter ${key}.`);
+        return;
+      }
+    }
+
+    if (!validateForm()) return;
 
     try {
       const response = await fetch(backendUrl, {
@@ -83,13 +109,18 @@ export default function SignupScreen({ navigation }) {
       });
 
       const data = await response.json();
-      console.log('Signup response data:', data);
+      console.log('Signup response:', data);
 
-      if (response.ok) {
-        showAlert('Success', data.message);
-        navigation.navigate('Login');
+      if (Platform.OS === 'web') {
+        setPopupMessage(`Success: ${data.message || 'Signup successful!'}`);
+        setPopupVisible(true);
       } else {
-        showAlert('Error', data.message || 'Signup failed.');
+        Alert.alert(
+          'Success',
+          data.message || 'Signup successful!',
+          [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
+          { cancelable: false }
+        );
       }
     } catch (error) {
       console.error('Signup Error:', error);
@@ -118,33 +149,59 @@ export default function SignupScreen({ navigation }) {
             style={styles.input}
             placeholder={label}
             secureTextEntry={key.toLowerCase().includes('password')}
-            keyboardType={key === 'phoneNumber' ? 'numeric' : 'default'}
+            keyboardType={
+              key === 'phoneNumber' || key === 'employeeId'
+                ? 'numeric'
+                : 'default'
+            }
             value={formData[key]}
-            onChangeText={(text) => setFormData({ ...formData, [key]: text })}
+            onChangeText={(text) =>
+              setFormData({ ...formData, [key]: text })
+            }
             placeholderTextColor="#aaa"
           />
         ))}
 
-        <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
-          <Text style={{ color: formData.dob ? '#000' : '#999' }}>
-            {formData.dob || 'Select Date of Birth'}
-          </Text>
-        </TouchableOpacity>
-
-        {showDatePicker && (
-          <DateTimePicker
-            value={formData.dob ? new Date(formData.dob) : new Date()}
-            mode="date"
-            display="default"
-            onChange={onDOBChange}
+        {Platform.OS === 'web' ? (
+          <input
+            type="date"
+            className="web-date"
+            style={styles.input}
+            value={formData.dob}
+            onChange={(e) =>
+              setFormData({ ...formData, dob: formatDate(e.target.value) })
+            }
+            max={new Date().toISOString().split('T')[0]}
           />
+        ) : (
+          <>
+            <TouchableOpacity
+              style={styles.input}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={{ color: formData.dob ? '#000' : '#999' }}>
+                {formData.dob || 'Select Date of Birth'}
+              </Text>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={new Date()}
+                mode="date"
+                display="default"
+                maximumDate={new Date()}
+                onChange={onDOBChange}
+              />
+            )}
+          </>
         )}
 
         <Picker
           selectedValue={formData.department}
           style={styles.input}
           dropdownIconColor="#6a1b9a"
-          onValueChange={(val) => setFormData({ ...formData, department: val })}
+          onValueChange={(val) =>
+            setFormData({ ...formData, department: val })
+          }
         >
           <Picker.Item label="Select Department" value="" />
           <Picker.Item label="CSE" value="CSE" />
@@ -161,6 +218,16 @@ export default function SignupScreen({ navigation }) {
           <Text style={styles.link}>Already have an account? Log In</Text>
         </TouchableOpacity>
       </View>
+
+      {/* ✅ Reusable popup */}
+      <PopupAlert
+        visible={popupVisible}
+        message={popupMessage}
+        onClose={() => {
+          setPopupVisible(false);
+          if (popupMessage.startsWith('Success')) navigation.navigate('Login');
+        }}
+      />
     </ScrollView>
   );
 }

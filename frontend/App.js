@@ -1,17 +1,29 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
 import LoginScreen from './LoginScreen.js';
 import SignupScreen from './SignupScreen.js';
+import DashboardScreen from './DashboardScreen.js';
+import ManageStaffScreen from './ManageStaffScreen.js';
+import AddStaffScreen from './AddStaffScreen.js';
+import DeleteStaffScreen from './DeleteStaffScreen.js';
+import ViewStaffScreen from './ViewStaffScreen.js';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+    console.log("App Rendered"); 
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Login">
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
+        <Stack.Screen name="Dashboard" component={DashboardScreen} />
+         <Stack.Screen name="ManageStaff" component={ManageStaffScreen} />
+        <Stack.Screen name="AddStaff" component={AddStaffScreen} />
+  <Stack.Screen name="DeleteStaff" component={DeleteStaffScreen} />
+  <Stack.Screen name="ViewStaff" component={ViewStaffScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

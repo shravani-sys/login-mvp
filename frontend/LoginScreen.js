@@ -1,84 +1,66 @@
 import React, { useState } from 'react';
-import {
-  View, Text, TextInput, Button,
-  StyleSheet, TouchableOpacity, Alert, Platform,
-} from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity } from 'react-native';
+import PopupAlert from './PopupAlert'; // ✅ Import your new component
 
 export default function LoginScreen({ navigation }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-
-  const passwordRegex =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
 
   const showAlert = (title, message) => {
-    if (Platform.OS === 'web') {
-      alert(`${title}: ${message}`);
-    } else {
-      Alert.alert(title, message);
-    }
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertVisible(true);
   };
 
   const handleLogin = async () => {
-    if (!username.trim()) {
-      showAlert('Validation Error', 'Username is required');
-    } else if (!passwordRegex.test(password)) {
-      showAlert(
-        'Invalid Password',
-        'Password must contain:\n- Min 8 characters\n- 1 uppercase\n- 1 lowercase\n- 1 number\n- 1 special character'
-      );
-    } else {
-      try {
-        const response = await fetch('http://192.168.169.225:5000/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
+    if (!username.trim()) return showAlert('Validation Error', 'Username is required');
+    if (password.length < 6) return showAlert('Validation Error', 'Password must be at least 6 characters');
 
-        const data = await response.json();
+    try {
+      const response = await fetch('http://10.21.202.225:5000/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
 
-        if (response.ok) {
-          showAlert('Success', data.message);
-          // navigation.navigate('Dashboard'); // Uncomment if you have a dashboard screen
-        } else {
-          showAlert('Error', data.message || 'Login failed');
-        }
-      } catch (error) {
-        showAlert('Network Error', 'Could not connect to the server');
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log("✅ Login successful");
+        showAlert('Success', data.message);
+        setTimeout(() => {
+          setAlertVisible(false);
+          navigation.navigate('Dashboard');
+        }, 1000);
+      } else {
+        showAlert('Login Failed', data.message || 'Invalid credentials');
       }
+    } catch (err) {
+      console.error(err);
+      showAlert('Network Error', 'Unable to connect to the server.');
     }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
-        value={username}
-        onChangeText={setUsername}
-        autoCapitalize="none"
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-
-      <Button title="Login" onPress={handleLogin} color="#841584" />
-
-      <TouchableOpacity
-        onPress={() => {
-          console.log('Navigating to Signup');
-          navigation.navigate('Signup');
-        }}
-      >
+      <TextInput style={styles.input} placeholder="Username" value={username} onChangeText={setUsername} />
+      <TextInput style={styles.input} placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} />
+      <Button title="Login" onPress={handleLogin} color="#6a1b9a" />
+      <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
         <Text style={styles.link}>Don't have an account? Sign Up</Text>
       </TouchableOpacity>
+
+      {/* 🔔 Include the PopupAlert component */}
+      <PopupAlert
+        title={alertTitle}
+        message={alertMessage}
+        visible={alertVisible}
+        onClose={() => setAlertVisible(false)}
+      />
     </View>
   );
 }
