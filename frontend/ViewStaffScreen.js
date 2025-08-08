@@ -9,7 +9,7 @@ import {
   Platform,
 } from 'react-native';
 
-const API_URL = 'http://10.21.202.225:5000/api/staff';
+const API_URL = 'http://192.168.65.225:5000/api/staff';
 
 
 export default function ViewStaffScreen() {

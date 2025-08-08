@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity } from 'react-native';
-import PopupAlert from './PopupAlert'; // ✅ Import your new component
+import PopupAlert from './PopupAlert';
 
 export default function LoginScreen({ navigation }) {
   const [username, setUsername] = useState('');
@@ -8,19 +8,23 @@ export default function LoginScreen({ navigation }) {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState('default');
+  const [buttonText, setButtonText] = useState('OK');
 
-  const showAlert = (title, message) => {
+  const showAlert = (title, message, type = 'default', btnText = 'OK') => {
     setAlertTitle(title);
     setAlertMessage(message);
+    setAlertType(type);
+    setButtonText(btnText);
     setAlertVisible(true);
   };
 
   const handleLogin = async () => {
-    if (!username.trim()) return showAlert('Validation Error', 'Username is required');
-    if (password.length < 6) return showAlert('Validation Error', 'Password must be at least 6 characters');
+    if (!username.trim()) return showAlert('Validation Error', 'Username is required', 'error', 'Try Again');
+    if (password.length < 6) return showAlert('Validation Error', 'Password must be at least 6 characters', 'warning', 'OK');
 
     try {
-      const response = await fetch('http://10.21.202.225:5000/login', {
+      const response = await fetch('http://192.168.65.225:5000/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -30,17 +34,17 @@ export default function LoginScreen({ navigation }) {
 
       if (response.ok) {
         console.log("✅ Login successful");
-        showAlert('Success', data.message);
+        showAlert('Success', data.message, 'success', 'Continue');
         setTimeout(() => {
           setAlertVisible(false);
           navigation.navigate('Dashboard');
         }, 1000);
       } else {
-        showAlert('Login Failed', data.message || 'Invalid credentials');
+        showAlert('Login Failed', data.message || 'Invalid credentials', 'error', 'Try Again');
       }
     } catch (err) {
       console.error(err);
-      showAlert('Network Error', 'Unable to connect to the server.');
+      showAlert('Network Error', 'Unable to connect to the server.', 'error', 'Retry');
     }
   };
 
@@ -54,12 +58,15 @@ export default function LoginScreen({ navigation }) {
         <Text style={styles.link}>Don't have an account? Sign Up</Text>
       </TouchableOpacity>
 
-      {/* 🔔 Include the PopupAlert component */}
       <PopupAlert
+        visible={alertVisible}
         title={alertTitle}
         message={alertMessage}
-        visible={alertVisible}
         onClose={() => setAlertVisible(false)}
+        type={alertType}
+        buttonText={buttonText}
+        width={320} 
+        height={190}   
       />
     </View>
   );
