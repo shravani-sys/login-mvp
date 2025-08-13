@@ -83,7 +83,7 @@ const showAlert = (title, message) => {
   };
 
   try {
-    const response = await fetch('http://192.168.65.225:5000/api/staff', {
+    const response = await fetch('http://10.160.95.225:5000/api/staff', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

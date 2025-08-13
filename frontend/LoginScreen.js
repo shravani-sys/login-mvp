@@ -24,7 +24,7 @@ export default function LoginScreen({ navigation }) {
     if (password.length < 6) return showAlert('Validation Error', 'Password must be at least 6 characters', 'warning', 'OK');
 
     try {
-      const response = await fetch('http://192.168.65.225:5000/login', {
+      const response = await fetch('http://10.160.95.225:5000/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
