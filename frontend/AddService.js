@@ -43,7 +43,7 @@ export default function AddService({ services, setServices }) {
   };
 
   const handleImageUpload = () => {
-    setImage('https://via.placeholder.com/300'); // Placeholder
+    setImage('https://via.placeholder.com/300'); // Placeholder image
   };
 
   return (
@@ -92,9 +92,7 @@ export default function AddService({ services, setServices }) {
       />
 
       <Text style={styles.label}>Service Image</Text>
-      {image && (
-        <Image source={{ uri: image }} style={styles.image} />
-      )}
+      {image && <Image source={{ uri: image }} style={styles.image} />}
       <TouchableOpacity style={styles.uploadButton} onPress={handleImageUpload}>
         <Text style={styles.uploadButtonText}>Upload & Modify</Text>
       </TouchableOpacity>
