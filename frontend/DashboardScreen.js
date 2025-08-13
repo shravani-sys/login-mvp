@@ -20,7 +20,7 @@ export default function DashboardScreen({ navigation }) {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await fetch('http://10.21.202.225:5000/api/dashboard');
+      const response = await fetch('http://10.160.95.225:5000/api/dashboard');
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard data');
       }
@@ -85,20 +85,26 @@ export default function DashboardScreen({ navigation }) {
 
       <Text style={styles.quickLinksTitle}>Quick Links</Text>
       <View style={styles.linksContainer}>
-        <TouchableOpacity style={styles.linkButton}>
-          <Text style={styles.linkText}>Manage Appointments</Text>
-        </TouchableOpacity>
+       <TouchableOpacity
+  style={styles.linkButton}
+  onPress={() => navigation.navigate('ManageAppointments')}
+>
+  <Text style={styles.linkText}>Manage Appointments</Text>
+</TouchableOpacity>
+
 
         <TouchableOpacity
           style={styles.linkButton}
-          onPress={() => navigation.navigate('ManageStaff')}
-        >
+          onPress={() => navigation.navigate('ManageStaff')}>
           <Text style={styles.linkText}>Manage Staff</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.linkButton}>
-          <Text style={styles.linkText}>Manage Services</Text>
-        </TouchableOpacity>
+        <TouchableOpacity
+        style={styles.linkButton}
+        onPress={() => navigation.navigate('ManageServices')}>
+       <Text style={styles.linkText}>Manage Services</Text>
+       </TouchableOpacity>
+
 
         <TouchableOpacity style={styles.linkButton}>
           <Text style={styles.linkText}>Manage Promotions</Text>
