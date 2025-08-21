@@ -14,10 +14,7 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import PopupAlert from './PopupAlert.js'; // adjust path as needed
-
-
-
+import PopupAlert from './PopupAlert.js'; 
 
 export default function AddStaffScreen() {
   const [name, setName] = useState('');
@@ -32,7 +29,7 @@ export default function AddStaffScreen() {
 const [popupVisible, setPopupVisible] = useState(false);
 const [popupMessage, setPopupMessage] = useState('');
 
-// ✅ Cross-platform alert function
+// Cross-platform alert function
 const showAlert = (title, message) => {
   setPopupMessage(`${title}\n\n${message}`);
   setPopupVisible(true);
@@ -86,7 +83,7 @@ const showAlert = (title, message) => {
   };
 
   try {
-    const response = await fetch('http://10.21.202.225:5000/api/staff', {
+    const response = await fetch('http://10.160.95.225:5000/api/staff', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -100,7 +97,6 @@ const showAlert = (title, message) => {
       showAlert('Success', 'Staff Added Successfully!');
       console.log('Server response:', data);
 
-      // Clear form
       setName('');
       setPhone('');
       setAddress('');
@@ -116,8 +112,6 @@ const showAlert = (title, message) => {
     showAlert('Error', 'Something went wrong.');
   }
 };
-
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.heading}>Add Staff Member</Text>
