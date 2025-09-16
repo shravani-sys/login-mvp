@@ -14,10 +14,7 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import PopupAlert from './PopupAlert.js'; // adjust path as needed
-
-
-
+import PopupAlert from './PopupAlert.js'; 
 
 export default function AddStaffScreen() {
   const [name, setName] = useState('');
@@ -31,8 +28,7 @@ export default function AddStaffScreen() {
   const [profileImage, setProfileImage] = useState(null);
 const [popupVisible, setPopupVisible] = useState(false);
 const [popupMessage, setPopupMessage] = useState('');
-
-// ✅ Cross-platform alert function
+//crossplatform alert functions
 const showAlert = (title, message) => {
   setPopupMessage(`${title}\n\n${message}`);
   setPopupVisible(true);
@@ -100,7 +96,7 @@ const showAlert = (title, message) => {
       showAlert('Success', 'Staff Added Successfully!');
       console.log('Server response:', data);
 
-      // Clear form
+      
       setName('');
       setPhone('');
       setAddress('');
@@ -305,6 +301,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  //for mobile view changes
   webDate: {
     padding: 12,
     borderRadius: 12,
