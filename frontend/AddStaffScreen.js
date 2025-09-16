@@ -62,7 +62,7 @@ const showAlert = (title, message) => {
     }
   };
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
   if (!name || !phone || !address || !dob || !joiningDate || !gender) {
     showAlert('Error', 'Please fill all fields.');
     return;
@@ -73,9 +73,11 @@ const showAlert = (title, message) => {
     return;
   }
 
+  //  matching backend field names
   const payload = {
-    name,
-    phone,
+    fullName: name,       
+    phoneNumber: phone,    
+    address: address,      
     dob,
     joiningDate,
     gender,
@@ -83,7 +85,7 @@ const showAlert = (title, message) => {
   };
 
   try {
-    const response = await fetch('http://10.160.95.225:5000/api/staff', {
+    const response = await fetch('http://10.168.97.225:5000/api/staff', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -97,6 +99,7 @@ const showAlert = (title, message) => {
       showAlert('Success', 'Staff Added Successfully!');
       console.log('Server response:', data);
 
+      // Reset form
       setName('');
       setPhone('');
       setAddress('');
@@ -150,78 +153,92 @@ const showAlert = (title, message) => {
         value={address}
         onChangeText={setAddress}
       />
+<View style={styles.inputContainer}>
+  <Text style={styles.label}>Date of Birth</Text>
+  {Platform.OS === 'web' ? (
+    <input
+      type="date"
+      style={styles.webDate}
+      value={dob ? new Date(dob).toISOString().split('T')[0] : ''}
+      onChange={(e) => setDob(e.target.value)}
+      max={new Date().toISOString().split('T')[0]}
+    />
+  ) : (
+    <>
+      <TouchableOpacity style={styles.input} onPress={() => setDobPickerVisible(true)}>
+        <Text style={{ color: dob ? '#000' : '#999' }}>
+          {dob || 'Select Date of Birth'}
+        </Text>
+      </TouchableOpacity>
+      <DateTimePickerModal
+        isVisible={isDobPickerVisible}
+        mode="date"
+        onConfirm={handleDobConfirm}
+        onCancel={() => setDobPickerVisible(false)}
+      />
+    </>
+  )}
+</View>
 
-      {/* DOB */}
-      <Text style={styles.label}>Date of Birth</Text>
-      {Platform.OS === 'web' ? (
-        <input
-          type="date"
-          className="web-date"
-          style={styles.webDate}
-          value={dob ? new Date(dob).toISOString().split('T')[0] : ''}
-          onChange={(e) => setDob(e.target.value)}
-          max={new Date().toISOString().split('T')[0]}
-        />
-      ) : (
-        <>
-          <TouchableOpacity style={styles.input} onPress={() => setDobPickerVisible(true)}>
-            <Text style={{ color: dob ? '#000' : '#999' }}>
-              {dob || 'Select Date of Birth'}
-            </Text>
-          </TouchableOpacity>
-          <DateTimePickerModal
-            isVisible={isDobPickerVisible}
-            mode="date"
-            onConfirm={handleDobConfirm}
-            onCancel={() => setDobPickerVisible(false)}
-          />
-        </>
-      )}
+<View style={styles.inputContainer}>
+  <Text style={styles.label}>Joining Date</Text>
+  {Platform.OS === 'web' ? (
+    <input
+      type="date"
+      style={styles.webDate}
+      value={joiningDate ? new Date(joiningDate).toISOString().split('T')[0] : ''}
+      onChange={(e) => setJoiningDate(e.target.value)}
+      max={new Date().toISOString().split('T')[0]}
+    />
+  ) : (
+    <>
+      <TouchableOpacity
+        style={styles.input}
+        onPress={() => setJoiningDatePickerVisible(true)}
+      >
+        <Text style={{ color: joiningDate ? '#000' : '#999' }}>
+          {joiningDate || 'Select Joining Date'}
+        </Text>
+      </TouchableOpacity>
+      <DateTimePickerModal
+        isVisible={isJoiningDatePickerVisible}
+        mode="date"
+        onConfirm={handleJoiningDateConfirm}
+        onCancel={() => setJoiningDatePickerVisible(false)}
+      />
+    </>
+  )}
+</View>
 
-      {/* Joining Date */}
-      <Text style={styles.label}>Joining Date</Text>
-      {Platform.OS === 'web' ? (
-        <input
-          type="date"
-          className="web-date"
-          style={styles.webDate}
-          value={joiningDate ? new Date(joiningDate).toISOString().split('T')[0] : ''}
-          onChange={(e) => setJoiningDate(e.target.value)}
-          max={new Date().toISOString().split('T')[0]}
-        />
-      ) : (
-        <>
-          <TouchableOpacity
-            style={styles.input}
-            onPress={() => setJoiningDatePickerVisible(true)}
-          >
-            <Text style={{ color: joiningDate ? '#000' : '#999' }}>
-              {joiningDate || 'Select Joining Date'}
-            </Text>
-          </TouchableOpacity>
-          <DateTimePickerModal
-            isVisible={isJoiningDatePickerVisible}
-            mode="date"
-            onConfirm={handleJoiningDateConfirm}
-            onCancel={() => setJoiningDatePickerVisible(false)}
-          />
-        </>
-      )}
+    
+     {/* Gender Picker */}
+<Text style={styles.label}>Gender</Text>
+{Platform.OS === 'web' ? (
+  <select
+    value={gender}
+    onChange={(e) => setGender(e.target.value)}
+    style={styles.webInput}   // ✅ apply same style as TextInput
+  >
+    <option value="">Select Gender</option>
+    <option value="male">Male</option>
+    <option value="female">Female</option>
+    <option value="other">Other</option>
+  </select>
+) : (
+  <View style={styles.pickerContainer}>
+    <Picker
+      selectedValue={gender}
+      onValueChange={(value) => setGender(value)}
+      style={styles.picker}
+    >
+      <Picker.Item label="Select Gender" value="" color="#aaa" />
+      <Picker.Item label="Male" value="male" />
+      <Picker.Item label="Female" value="female" />
+      <Picker.Item label="Other" value="other" />
+    </Picker>
+  </View>
+)}
 
-      {/* Gender Picker */}
-      <Text style={styles.label}>Gender</Text>
-      <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={gender}
-          onValueChange={(value) => setGender(value)}
-          style={styles.picker}
-        >
-          <Picker.Item label="Select Gender" value="" color="#aaa" />
-          <Picker.Item label="Male" value="male" />
-          <Picker.Item label="Female" value="female" />
-          <Picker.Item label="Other" value="other" />
-        </Picker>
-      </View>
 
       {/* Submit */}
       <TouchableOpacity style={styles.button} onPress={handleSubmit}>
@@ -261,6 +278,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     width: '100%',
   },
+  webInput: {
+  padding: 12,
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#ccc',
+  marginBottom: 12,
+  fontSize: 16,
+  backgroundColor: '#fff',
+  color: '#333',
+  width: '100%',
+  outline: 'none',
+  boxSizing: 'border-box',
+},
+
   label: {
     alignSelf: 'flex-start',
     marginTop: 12,
@@ -328,4 +359,23 @@ const styles = StyleSheet.create({
     color: '#777',
     marginTop: 4,
   },
+  inputContainer: {
+  width: '100%',
+  marginBottom: 12,
+},
+
+webDate: {
+  width: '100%',
+  padding: 12,
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#ccc',
+  marginBottom: 12,
+  fontSize: 16,
+  backgroundColor: '#fff',
+  color: '#333',
+  boxSizing: 'border-box',
+  outline: 'none',
+},
+
 });

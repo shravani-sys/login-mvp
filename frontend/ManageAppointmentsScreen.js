@@ -11,7 +11,7 @@ import {
 import { useFocusEffect, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
-const API = "http://10.160.95.225:5000/api/appointments";
+const API = "http://10.168.97.225:5000/api/appointments";
 
 // Parse "YYYY-MM-DD" + "HH:mm" -> Date
 const parseApptDate = (dateStr, timeStr) => {
@@ -45,14 +45,14 @@ export default function ManageAppointmentsScreen({ navigation }) {
     }
   };
 
-  // ✅ Refresh when screen becomes active or when search changes
+  //  Refresh when screen becomes active or when search changes
   useFocusEffect(
     useCallback(() => {
       fetchAppointments();
     }, [search])
   );
 
-  // ✅ If coming from Add screen with refresh flag
+  // If coming from Add screen with refresh flag
   useFocusEffect(
     useCallback(() => {
       if (route.params?.refresh) {

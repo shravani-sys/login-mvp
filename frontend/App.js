@@ -12,7 +12,11 @@ import DeleteStaffScreen from './DeleteStaffScreen.js';
 import ViewStaffScreen from './ViewStaffScreen.js';
 import ManageAppointmentsScreen from './ManageAppointmentsScreen';
 import AddAppointmentScreen from './AddAppointmentScreen';
+import ManageServicesScreen from './ManageServicesScreen';
+import AddService from './AddService'; 
+import CalendarScreen from './CalendarScreen';
 
+import NotificationScreen from './NotificationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,8 +33,21 @@ export default function App() {
         <Stack.Screen name="AddStaff" component={AddStaffScreen} />
         <Stack.Screen name="DeleteStaff" component={DeleteStaffScreen} />
         <Stack.Screen name="ViewStaff" component={ViewStaffScreen} />
-<Stack.Screen name="ManageAppointments" component={ManageAppointmentsScreen} />
-<Stack.Screen name="AddAppointment" component={AddAppointmentScreen} />
+        <Stack.Screen name="ManageAppointments" component={ManageAppointmentsScreen} />
+        <Stack.Screen name="AddAppointment" component={AddAppointmentScreen} />
+        <Stack.Screen 
+          name="Calendar" 
+          component={CalendarScreen} 
+          options={{ headerShown: false }} 
+        />
+
+        {/* ✅ Add Notification Screen */}
+        <Stack.Screen 
+          name="Notifications" 
+          component={NotificationScreen} 
+          options={{ headerShown: false }} 
+        />
+
         {/* Pass services & setServices to ManageServices */}
         <Stack.Screen name="ManageServices">
           {(props) => (
