@@ -1,0 +1,11 @@
+.web-date-picker {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #E5D6FF;  /* same border as other inputs */
+  border-radius: 10px;
+  font-size: 16px;
+  color: #2a2a2a;
+  background-color: #fff;
+  outline: none;
+  box-sizing: border-box;  /* ensures padding works like other inputs */
+}

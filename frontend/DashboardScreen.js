@@ -20,7 +20,7 @@ export default function DashboardScreen({ navigation }) {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await fetch('http://10.21.202.225:5000/api/dashboard');
+      const response = await fetch('http://10.168.97.225:5000/api/dashboard');
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard data');
       }
@@ -35,14 +35,24 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
-  const InfoCard = ({ title, value, icon }) => (
-    <View style={styles.card}>
+  // Info card component
+  const InfoCard = ({ title, value, icon, onPress }) => (
+    <TouchableOpacity 
+      style={styles.card} 
+      onPress={onPress}
+      activeOpacity={onPress ? 0.8 : 1}
+    >
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>{title}</Text>
-        {icon}
+        <View style={styles.cardIconContainer}>
+          {icon}
+          {onPress && (
+            <Ionicons name="chevron-forward" size={16} color="#6C3483" style={styles.chevronIcon} />
+          )}
+        </View>
       </View>
       <Text style={styles.cardValue}>{value}</Text>
-    </View>
+    </TouchableOpacity>
   );
 
   if (loading) {
@@ -55,48 +65,69 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>SalonAdmin Dashboard</Text>
+      {/* Header with title + notification bell */}
+      <View style={styles.headerContainer}>
+        <Text style={styles.title}>SalonAdmin Dashboard</Text>
+        <TouchableOpacity 
+          style={styles.notificationButton} 
+          onPress={() => navigation.navigate('Notifications')}
+        >
+          <Ionicons name="notifications-outline" size={28} color="#6C3483" />
+        </TouchableOpacity>
+      </View>
 
+      {/* Dashboard cards */}
       <InfoCard
         title="Total Appointments"
         value={data.totalAppointments}
         icon={<Ionicons name="calendar" size={20} color="#6C3483" />}
+        onPress={() => navigation.navigate('Calendar')}
       />
+      
       <InfoCard
         title="Revenue Generated"
         value={`₹${data.revenueGenerated}`}
         icon={<FontAwesome5 name="rupee-sign" size={18} color="#6C3483" />}
       />
+      
       <InfoCard
         title="Upcoming Appointments"
         value={data.upcomingAppointments}
         icon={<Ionicons name="time" size={20} color="#6C3483" />}
+        onPress={() => navigation.navigate('Calendar')}
       />
+      
       <InfoCard
         title="Ongoing Ad Campaigns"
         value={data.ongoingAdCampaigns}
         icon={<MaterialIcons name="campaign" size={20} color="#6C3483" />}
       />
+      
       <InfoCard
         title="Current Promotions"
         value={data.currentPromotions}
         icon={<MaterialIcons name="local-offer" size={20} color="#6C3483" />}
       />
 
+      {/* Quick links */}
       <Text style={styles.quickLinksTitle}>Quick Links</Text>
       <View style={styles.linksContainer}>
-        <TouchableOpacity style={styles.linkButton}>
+        <TouchableOpacity
+          style={styles.linkButton}
+          onPress={() => navigation.navigate('ManageAppointments')}
+        >
           <Text style={styles.linkText}>Manage Appointments</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.linkButton}
-          onPress={() => navigation.navigate('ManageStaff')}
-        >
+          onPress={() => navigation.navigate('ManageStaff')}>
           <Text style={styles.linkText}>Manage Staff</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.linkButton}>
+        <TouchableOpacity
+          style={styles.linkButton}
+          onPress={() => navigation.navigate('ManageServices')}>
           <Text style={styles.linkText}>Manage Services</Text>
         </TouchableOpacity>
 
@@ -119,12 +150,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 100,
   },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  notificationButton: {
+    padding: 8,
+  },
   title: {
     fontSize: 24,
     marginVertical: 10,
     fontWeight: 'bold',
     textAlign: 'center',
     color: '#6C3483',
+    flex: 1,
   },
   card: {
     backgroundColor: '#EAD4FF',
@@ -135,6 +175,14 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardIconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chevronIcon: {
+    marginLeft: 8,
   },
   cardTitle: {
     fontSize: 16,
