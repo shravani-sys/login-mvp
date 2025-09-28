@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import PopupAlert from './PopupAlert'; // Adjust the import path as needed
 
 const { width } = Dimensions.get('window');
-const API_URL = 'http://10.168.97.225:5000/api/services';
+const API_URL = 'http://192.168.106.225:5000/api/services';
 
 export default function ManageServicesScreen({ services: propServices, setServices: setPropServices }) {
   console.log(' COMPONENT STARTING - ManageServicesScreen');
@@ -61,61 +61,60 @@ export default function ManageServicesScreen({ services: propServices, setServic
   const closeAlert = () => {
     setAlertConfig(prev => ({ ...prev, visible: false }));
   };
+const fetchServices = async () => {
+  console.log(' fetchServices called');
+  setRenderStep('fetching');
 
-  const fetchServices = async () => {
-    console.log(' fetchServices called');
-    setRenderStep('fetching');
-    
-    try {
-      setError(null);
-      console.log('📡 Making request to:', API_URL);
-      
-      const response = await fetch(API_URL);
-      console.log('✅ Response received:', response.status, response.statusText);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      console.log(' Data received:', data);
-      
-      if (Array.isArray(data)) {
-        setServices(data);
-        console.log('✅ Services set successfully:', data.length, 'items');
-        setRenderStep('success');
-        
-        if (setPropServices) {
-          setPropServices(data);
-        }
-      } else {
-        console.warn(' Data is not array:', typeof data);
-        setServices([]);
-        setRenderStep('empty');
-      }
-      
-    } catch (error) {
-      console.error('❌ Fetch error:', error);
-      setError(error.message);
-      setRenderStep('error');
-      
-      if (propServices && Array.isArray(propServices)) {
-        console.log(' Using fallback services');
-        setServices(propServices);
-      }
-      
-      // Show error alert
-      showAlert({
-        title: 'Connection Error',
-        message: `Failed to load services: ${error.message}`,
-        type: 'error',
-      });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-      console.log(' fetchServices completed');
+  try {
+    setError(null);
+    console.log('📡 Making request to:', API_URL);
+
+    const response = await fetch(API_URL);
+    console.log('✅ Response received:', response.status, response.statusText);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-  };
+
+    const data = await response.json();
+    console.log(' Data received:', data);
+
+    // FIX: handle { success: true, services: [] }
+    if (Array.isArray(data.services)) {
+      setServices(data.services);
+      console.log('✅ Services set successfully:', data.services.length, 'items');
+      setRenderStep('success');
+
+      if (setPropServices) {
+        setPropServices(data.services);
+      }
+    } else {
+      console.warn('⚠️ No services array found in response');
+      setServices([]);
+      setRenderStep('empty');
+    }
+
+  } catch (error) {
+    console.error('❌ Fetch error:', error);
+    setError(error.message);
+    setRenderStep('error');
+
+    if (propServices && Array.isArray(propServices)) {
+      console.log(' Using fallback services');
+      setServices(propServices);
+    }
+
+    showAlert({
+      title: 'Connection Error',
+      message: `Failed to load services: ${error.message}`,
+      type: 'error',
+    });
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+    console.log(' fetchServices completed');
+  }
+};
 
   useEffect(() => {
     console.log(' useEffect triggered');
@@ -129,56 +128,53 @@ export default function ManageServicesScreen({ services: propServices, setServic
   };
 
   const handleDelete = async (id, title) => {
-    console.log(' Delete requested for:', id, title);
-    
-    showAlert({
-      title: 'Delete Service',
-      message: `Are you sure you want to delete "${title}"?`,
-      type: 'error',
-      buttonText: 'Delete',
-      buttonAction: async () => {
-        try {
-          const response = await fetch(`${API_URL}/${id}`, {
-            method: 'DELETE',
-          });
+  showAlert({
+    title: 'Delete Service',
+    message: `Are you sure you want to delete "${title}"?`,
+    type: 'error',
+    buttonText: 'Delete',
+    buttonAction: async () => {
+      try {
+        const response = await fetch(`${API_URL}/${id}`, {
+          method: 'DELETE',
+        });
 
-          if (response.ok) {
-            const updatedServices = services.filter(service => service.id !== id);
-            setServices(updatedServices);
-            
-            if (setPropServices) {
-              setPropServices(updatedServices);
-            }
-            
-            closeAlert();
-            showAlert({
-              title: 'Success',
-              message: 'Service deleted successfully',
-              type: 'success',
-            });
-          } else {
-            const data = await response.json();
-            closeAlert();
-            showAlert({
-              title: 'Error',
-              message: data.message || 'Failed to delete service',
-              type: 'error',
-            });
-          }
-        } catch (error) {
-          console.error('Delete error:', error);
+        const data = await response.json();
+
+        if (response.ok) {
+          const updatedServices = services.filter(service => service.id !== id);
+          setServices(updatedServices);
+          if (setPropServices) setPropServices(updatedServices);
+
+          closeAlert();
+          showAlert({
+            title: 'Success',
+            message: data.message || 'Service deleted successfully',
+            type: 'success',
+          });
+        } else {
           closeAlert();
           showAlert({
             title: 'Error',
-            message: 'Something went wrong while deleting',
+            message: data.message || 'Failed to delete service',
             type: 'error',
           });
         }
-      },
-      secondButtonText: 'Cancel',
-      secondButtonAction: closeAlert,
-    });
-  };
+      } catch (error) {
+        console.error('Delete error:', error);
+        closeAlert();
+        showAlert({
+          title: 'Error',
+          message: 'Something went wrong while deleting',
+          type: 'error',
+        });
+      }
+    },
+    secondButtonText: 'Cancel',
+    secondButtonAction: closeAlert,
+  });
+};
+
 
   const renderService = ({ item, index }) => {
     console.log(` Rendering service ${index}:`, item?.title || 'No title');

@@ -29,7 +29,7 @@ export default function SignupScreen({ navigation }) {
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const backendUrl = 'http://10.168.97.225:5000/signup';
+  const backendUrl = 'http://192.168.106.225:5000/signup';
 
  const [popupVisible, setPopupVisible] = useState(false);
 const [popupMessage, setPopupMessage] = useState('');

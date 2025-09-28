@@ -86,7 +86,7 @@ const handleSubmit = async () => {
   };
 
   try {
-    const response = await fetch('http://10.168.97.225:5000/api/staff', {
+    const response = await fetch('http://192.168.106.225:5000/api/staff', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

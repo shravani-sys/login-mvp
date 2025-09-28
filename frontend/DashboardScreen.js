@@ -20,7 +20,7 @@ export default function DashboardScreen({ navigation }) {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await fetch('http://10.168.97.225:5000/api/dashboard');
+      const response = await fetch('http://192.168.106.225:5000/api/dashboard');
       if (!response.ok) {
         throw new Error('Failed to fetch dashboard data');
       }

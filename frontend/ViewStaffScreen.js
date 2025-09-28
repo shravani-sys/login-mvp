@@ -6,11 +6,10 @@ import {
   Image,
   ScrollView,
   ActivityIndicator,
-  Platform,
   RefreshControl,
 } from 'react-native';
 
-const API_URL = 'http://10.168.97.225:5000/api/staff';
+const API_URL = 'http://192.168.106.225:5000/api/staff';
 
 export default function ViewStaffScreen() {
   const [staffList, setStaffList] = useState([]);
@@ -22,11 +21,12 @@ export default function ViewStaffScreen() {
       console.log('Fetching staff from:', API_URL);
       const response = await fetch(API_URL);
       const data = await response.json();
-      
+
       console.log('Raw staff data from API:', data);
-      
+
       if (response.ok) {
-        setStaffList(Array.isArray(data) ? data : []);
+        // Fix: use data.staff if backend returns { success: true, staff: [...] }
+        setStaffList(Array.isArray(data.staff) ? data.staff : []);
       } else {
         console.error('API Error:', data.message);
         setStaffList([]);
@@ -54,8 +54,8 @@ export default function ViewStaffScreen() {
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString();
-    } catch (error) {
-      return dateString; // Return original if parsing fails
+    } catch {
+      return dateString;
     }
   };
 
@@ -78,74 +78,55 @@ export default function ViewStaffScreen() {
   }
 
   return (
-    <ScrollView 
+    <ScrollView
       contentContainerStyle={styles.listContainer}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <Text style={styles.header}>Staff Members ({staffList.length})</Text>
-      
-      {staffList.map((staff, index) => {
-        // Debug log each staff member
-        console.log(`Staff ${index}:`, staff);
-        
-        return (
-          <View key={staff.id || index} style={styles.card}>
-            <Image
-              source={{
-                uri: staff.profile_picture || staff.photo || 'https://via.placeholder.com/100',
-              }}
-              style={styles.image}
-              onError={(error) => {
-                console.log('Image load error:', error);
-              }}
-            />
-            <View style={styles.info}>
-              <Text style={styles.name}>
-                {staff.full_name || staff.name || 'No Name'}
-              </Text>
-              
-              <View style={styles.detailRow}>
-                <Text style={styles.label}>Phone:</Text>
-                <Text style={styles.value}>
-                  {staff.phone_number || staff.phone || 'N/A'}
-                </Text>
-              </View>
-              
-              <View style={styles.detailRow}>
-                <Text style={styles.label}>DOB:</Text>
-                <Text style={styles.value}>
-                  {formatDate(staff.date_of_birth || staff.dob)}
-                </Text>
-              </View>
-              
-              <View style={styles.detailRow}>
-                <Text style={styles.label}>Joined:</Text>
-                <Text style={styles.value}>
-                  {formatDate(staff.joining_date || staff.joiningDate)}
-                </Text>
-              </View>
-              
-              <View style={styles.detailRow}>
-                <Text style={styles.label}>Gender:</Text>
-                <Text style={styles.value}>
-                  {staff.gender || 'N/A'}
-                </Text>
-              </View>
 
-              {staff.address && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.label}>Address:</Text>
-                  <Text style={styles.value} numberOfLines={2}>
-                    {staff.address}
-                  </Text>
-                </View>
-              )}
+      {staffList.map((staff, index) => (
+        <View key={staff.id || index} style={styles.card}>
+          <Image
+            source={{
+              uri: staff.profile_picture || staff.photo || 'https://via.placeholder.com/100',
+            }}
+            style={styles.image}
+            onError={(error) => console.log('Image load error:', error)}
+          />
+          <View style={styles.info}>
+            <Text style={styles.name}>{staff.full_name || staff.name || 'No Name'}</Text>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>Phone:</Text>
+              <Text style={styles.value}>{staff.phone_number || staff.phone || 'N/A'}</Text>
             </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>DOB:</Text>
+              <Text style={styles.value}>{formatDate(staff.date_of_birth || staff.dob)}</Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>Joined:</Text>
+              <Text style={styles.value}>{formatDate(staff.joining_date || staff.joiningDate)}</Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>Gender:</Text>
+              <Text style={styles.value}>{staff.gender || 'N/A'}</Text>
+            </View>
+
+            {staff.address && (
+              <View style={styles.detailRow}>
+                <Text style={styles.label}>Address:</Text>
+                <Text style={styles.value} numberOfLines={2}>
+                  {staff.address}
+                </Text>
+              </View>
+            )}
           </View>
-        );
-      })}
+        </View>
+      ))}
     </ScrollView>
   );
 }

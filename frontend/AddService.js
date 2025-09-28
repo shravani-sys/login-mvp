@@ -16,6 +16,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import PopupAlert from './PopupAlert'; // Adjust the import path as needed
 
+// Configurable API base URL (standardized)
+const API_BASE_URL = 'http://192.168.106.225:5000';
+
 export default function AddService({ services, setServices }) {
   const navigation = useNavigation();
   const route = useRoute();
@@ -49,13 +52,17 @@ export default function AddService({ services, setServices }) {
   useEffect(() => {
     const fetchStaff = async () => {
       try {
-        const response = await fetch('http://10.168.97.225:5000/api/staff');
+        const response = await fetch(`${API_BASE_URL}/api/staff`);
         if (response.ok) {
           const data = await response.json();
-          setStaffList(data);
+          setStaffList(Array.isArray(data) ? data : []);
+        } else {
+          console.error('Failed to fetch staff:', response.status);
+          setStaffList([]);
         }
       } catch (error) {
         console.error('Error fetching staff:', error);
+        setStaffList([]);
       }
     };
 
@@ -106,16 +113,17 @@ export default function AddService({ services, setServices }) {
       return;
     }
 
+    // Disable save button during processing
     setLoading(true);
 
     const serviceData = {
       title: serviceName.trim(),
-      category: category.trim(),
+      category: category.trim() || null,
       duration: duration ? parseInt(duration) : null,
       price: parseFloat(price),
-      description: description.trim(),
-      staff: staff.trim(),
-      image: image,
+      description: description.trim() || null,
+      staff: staff.trim() || null,
+      image: typeof image === 'string' ? image : null, // Ensure URI string
     };
 
     try {
@@ -123,7 +131,7 @@ export default function AddService({ services, setServices }) {
       
       if (isEditing) {
         // Update existing service
-        response = await fetch(`http://10.85.32.225:5000/api/services/${editService.id}`, {
+        response = await fetch(`${API_BASE_URL}/api/services/${editService.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -132,7 +140,7 @@ export default function AddService({ services, setServices }) {
         });
       } else {
         // Add new service
-        response = await fetch('http://10.85.32.225:5000/api/services', {
+        response = await fetch(`${API_BASE_URL}/api/services`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -142,37 +150,26 @@ export default function AddService({ services, setServices }) {
       }
 
       if (response.ok) {
-        const data = await response.json();
-        
-        // Update local state if setServices function is provided
-        if (setServices) {
+        // Optional: Update local state if setServices is provided
+        if (setServices && services && Array.isArray(services)) {
           if (isEditing) {
-            // Update existing service in the list
-            if (services && Array.isArray(services)) {
-              const updatedServices = services.map(service =>
-                service.id === editService.id ? { ...service, ...serviceData, id: editService.id } : service
-              );
-              setServices(updatedServices);
-            }
+            const updatedServices = services.map(service =>
+              service.id === editService.id ? { ...service, ...serviceData } : service
+            );
+            setServices(updatedServices);
           } else {
-            // Add new service to the list
-            const newService = data.service || { ...serviceData, id: data.id || Date.now() };
-            if (services && Array.isArray(services)) {
-              setServices([...services, newService]);
-            } else {
-              setServices([newService]);
-            }
+            // For new service, we'd need the returned ID—rely on refresh instead
+            setServices([...services, { ...serviceData, id: Date.now() }]); // Temp ID
           }
         }
 
-        // Show success message and navigate back
+        // Show success and navigate back with refresh flag
         showAlert({
           title: 'Success',
           message: isEditing ? 'Service updated successfully!' : 'Service added successfully!',
           type: 'success',
           buttonAction: () => {
             closeAlert();
-            // Navigate back and refresh the ManageServices screen
             navigation.navigate('ManageServices', { 
               refresh: true, 
               timestamp: Date.now() 
@@ -180,7 +177,7 @@ export default function AddService({ services, setServices }) {
           },
         });
       } else {
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
         showAlert({
           title: 'Server Error',
           message: data.message || 'Failed to save service. Please try again.',
@@ -201,7 +198,18 @@ export default function AddService({ services, setServices }) {
 
   const handleImageUpload = async () => {
     try {
-      // Request permission
+      if (Platform.OS === 'web') {
+        // Web fallback (no ImagePicker)
+        setImage('https://via.placeholder.com/300x169?text=Service+Image');
+        showAlert({
+          title: 'Image Added',
+          message: 'Placeholder image added successfully!',
+          type: 'info',
+        });
+        return;
+      }
+
+      // Request permission (mobile)
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         showAlert({
@@ -219,7 +227,7 @@ export default function AddService({ services, setServices }) {
         quality: 0.8,
       });
 
-      if (!result.canceled) {
+      if (!result.canceled && result.assets && result.assets.length > 0) {
         setImage(result.assets[0].uri);
         showAlert({
           title: 'Image Selected',
@@ -229,30 +237,26 @@ export default function AddService({ services, setServices }) {
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      // Fallback for web or if ImagePicker fails
-      if (Platform.OS === 'web') {
-        setImage('https://via.placeholder.com/300x169?text=Service+Image');
-        showAlert({
-          title: 'Image Added',
-          message: 'Placeholder image added successfully!',
-          type: 'info',
-        });
-      } else {
-        showAlert({
-          title: 'Upload Failed',
-          message: 'Failed to upload image. Please try again.',
-          type: 'error',
-        });
-      }
+      showAlert({
+        title: 'Upload Failed',
+        message: 'Failed to upload image. Please try again.',
+        type: 'error',
+      });
     }
   };
 
   const handleCancel = () => {
-    // Check if there are unsaved changes
-    const hasChanges = serviceName.trim() || category.trim() || duration.trim() || 
-                      price.trim() || description.trim() || staff.trim() || image;
+    // Improved unsaved changes detection
+    const hasChanges = 
+      serviceName.trim() !== (editService?.title || '') ||
+      category.trim() !== (editService?.category || '') ||
+      duration.trim() !== (editService?.duration?.toString() || '') ||
+      price.trim() !== (editService?.price?.toString() || '') ||
+      description.trim() !== (editService?.description || '') ||
+      staff.trim() !== (editService?.staff || '') ||
+      image !== (editService?.image || null);
     
-    if (hasChanges && !isEditing) {
+    if (hasChanges) {
       showAlert({
         title: 'Unsaved Changes',
         message: 'You have unsaved changes. Are you sure you want to go back?',
@@ -282,6 +286,8 @@ export default function AddService({ services, setServices }) {
     'Other'
   ];
 
+  const isSaveDisabled = loading || !serviceName.trim() || !price.trim() || isNaN(parseFloat(price));
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.header}>
@@ -303,32 +309,33 @@ export default function AddService({ services, setServices }) {
           placeholderTextColor="#999"
         />
 
-       <Text style={styles.label}>Category</Text>
-{Platform.OS === 'web' ? (
-  <select
-    style={styles.webSelect}
-    value={category}
-    onChange={(e) => setCategory(e.target.value)}
-  >
-    <option value="">Select Category</option>
-    {categories.map((cat) => (
-      <option key={cat} value={cat}>{cat}</option>
-    ))}
-  </select>
-) : (
-  <View style={styles.pickerContainer}>
-    <Picker
-      selectedValue={category}
-      onValueChange={setCategory}
-      style={styles.picker}
-    >
-      <Picker.Item label="Select Category" value="" color="#999" />
-      {categories.map((cat) => (
-        <Picker.Item key={cat} label={cat} value={cat} />
-      ))}
-    </Picker>
-  </View>
-)}
+        <Text style={styles.label}>Category</Text>
+        {Platform.OS === 'web' ? (
+          <select
+            style={styles.webSelect}
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            <option value="">Select Category</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        ) : (
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={category}
+              onValueChange={setCategory}
+              style={styles.picker}
+              enabled={true}
+            >
+              <Picker.Item label="Select Category" value="" />
+              {categories.map((cat) => (
+                <Picker.Item key={cat} label={cat} value={cat} />
+              ))}
+            </Picker>
+          </View>
+        )}
 
         <Text style={styles.label}>Duration (minutes)</Text>
         <TextInput
@@ -362,7 +369,7 @@ export default function AddService({ services, setServices }) {
         />
 
         <Text style={styles.label}>Service Image</Text>
-        <TouchableOpacity style={styles.imageContainer} onPress={handleImageUpload}>
+        <TouchableOpacity style={styles.imageContainer} onPress={handleImageUpload} disabled={loading}>
           {image ? (
             <View style={styles.imageWrapper}>
               <Image source={{ uri: image }} style={styles.image} />
@@ -379,263 +386,259 @@ export default function AddService({ services, setServices }) {
           )}
         </TouchableOpacity>
 
-    <Text style={styles.label}>Staff Member</Text>
-{Platform.OS === 'web' ? (
-  <select
-    style={styles.webSelect}
-    value={staff}
-    onChange={(e) => setStaff(e.target.value)}
-  >
-    <option value="">Select Staff Member</option>
-    {staffList.map((member) => (
-      <option 
-        key={member.id} 
-        value={member.full_name || member.name}
-      >
-        {member.full_name || member.name}
-      </option>
-    ))}
-  </select>
-) : (
-  <View style={styles.pickerContainer}>
-    <Picker
-      selectedValue={staff}
-      onValueChange={setStaff}
-      style={styles.picker}
-    >
-      <Picker.Item label="Select Staff Member" value="" color="#999" />
-      {staffList.map((member) => (
-        <Picker.Item 
-          key={member.id} 
-          label={member.full_name || member.name} 
-          value={member.full_name || member.name} 
-        />
-      ))}
-    </Picker>
-  </View>
-)}
+        <Text style={styles.label}>Staff Member</Text>
+        {Platform.OS === 'web' ? (
+          <select
+            style={styles.webSelect}
+            value={staff}
+            onChange={(e) => setStaff(e.target.value)}
+            disabled={staffList.length === 0}
+          >
+            <option value="">Select Staff Member</option>
+            {staffList.map((member) => (
+              <option 
+                key={member.id} 
+                value={member.full_name || member.name || ''}
+              >
+                {member.full_name || member.name || 'Unknown'}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={staff}
+              onValueChange={setStaff}
+              style={styles.picker}
+              enabled={staffList.length > 0}
+            >
+              <Picker.Item label="Select Staff Member" value="" />
+              {staffList.map((member) => (
+                <Picker.Item 
+                  key={member.id} 
+                  label={member.full_name || member.name || 'Unknown'} 
+                  value={member.full_name || member.name || ''} 
+                />
+              ))}
+            </Picker>
+          </View>
+        )}
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity 
-          style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
-          onPress={handleSave}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator color="#fff" size="small" />
-              <Text style={styles.saveButtonText}>Saving...</Text>
-            </View>
-          ) : (
-            <Text style={styles.saveButtonText}>
-              {isEditing ? 'Update Service' : 'Add Service'}
-            </Text>
-          )}
-        </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={[styles.saveButton, isSaveDisabled && styles.saveButtonDisabled]} 
+            onPress={handleSave}
+            disabled={isSaveDisabled}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={styles.saveButtonText}>Saving...</Text>
+              </View>
+            ) : (
+              <Text style={styles.saveButtonText}>
+                {isEditing ? 'Update Service' : 'Add Service'}
+              </Text>
+            )}
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.cancelButton} 
-          onPress={handleCancel}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity 
+            style={styles.cancelButton} 
+            onPress={handleCancel}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
 
-      <PopupAlert
-        {...alertConfig}
-        onClose={closeAlert}
-      />
+        <PopupAlert {...alertConfig} onClose={closeAlert} />
       </View> 
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#f8faff' 
-  },
-  contentContainer: {
-    paddingBottom: 40,
-  },
-  header: {
-    backgroundColor: '#ffffff',
-    paddingTop: Platform.OS === 'ios' ? 60 : 20,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#6C3483',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-    marginBottom: 20,
-  },
-  heading: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#2c1810',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  subheading: {
-    fontSize: 14,
-    color: '#8e8e93',
-    textAlign: 'center',
-  },
-  form: {
-    paddingHorizontal: 20,
-  },
-  label: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    marginTop: 20,
-    marginBottom: 8,
-    color: '#2c1810',
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e1e1e1',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#333',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  pickerContainer: {
-  backgroundColor: '#fff',
-  borderWidth: 1,
-  borderColor: '#e1e1e1',
-  borderRadius: 12,
-  paddingHorizontal: 16,   // match TextInput padding
-  height: 56,              // same as TextInput height
-  justifyContent: 'center', // center picker text vertically
-  marginBottom: 16,        // spacing same as input
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.05,
-  shadowRadius: 4,
-  elevation: 2,
+  container: { 
+    flex: 1, 
+    backgroundColor: '#f8faff' 
+  },
+  contentContainer: {
+    paddingBottom: 40,
+  },
+  header: {
+    backgroundColor: '#ffffff',
+    paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#6C3483',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+    marginBottom: 20,
+  },
+  heading: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#2c1810',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  subheading: {
+    fontSize: 14,
+    color: '#8e8e93',
+    textAlign: 'center',
+  },
+  form: {
+    paddingHorizontal: 20,
+  },
+  label: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    marginTop: 20,
+    marginBottom: 8,
+    color: '#2c1810',
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e1e1e1',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: '#333',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  pickerContainer: {
+  backgroundColor: '#fff',
+  borderWidth: 1,
+  borderColor: '#e1e1e1',
+  borderRadius: 12,
+  paddingHorizontal: 16,   
+  height: 56,              
+  justifyContent: 'center', 
+  marginBottom: 16,        
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.05,
+  shadowRadius: 4,
+  elevation: 2,
 },
-
 picker: {
-  fontSize: 16,     // same as TextInput font
-  color: '#333',    // same text color
+  fontSize: 16,     
+  color: '#333',   
 },
-
-
-  imageContainer: {
-    marginTop: 8,
-    marginBottom: 10,
-  },
-  imageWrapper: {
-    position: 'relative',
-  },
-  image: { 
-    width: '100%', 
-    height: 150, 
-    borderRadius: 12,
-    resizeMode: 'cover',
-  },
-  imageOverlay: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  imageOverlayText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
-    marginLeft: 4,
-  },
-  imagePlaceholder: {
-    height: 150,
-    backgroundColor: '#f5f5f5',
-    borderWidth: 2,
-    borderColor: '#e1e1e1',
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  imagePlaceholderText: {
-    color: '#999',
-    marginTop: 8,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  buttonContainer: {
-    paddingHorizontal: 20,
-    marginTop: 30,
-  },
-  saveButton: {
-    backgroundColor: '#6C3483',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#6C3483',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  saveButtonDisabled: {
-    opacity: 0.7,
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  saveButtonText: { 
-    color: '#fff', 
-    fontWeight: '600', 
-    fontSize: 16,
-    marginLeft: 8,
-  },
-  cancelButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: '#6C3483',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: '#6C3483',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  webSelect: {
-  width: '100%',
-  height: 56,
-  borderWidth: 1,
-  borderColor: '#e1e1e1',
-  borderRadius: 12,
-  paddingHorizontal: 16,
-  fontSize: 16,
-  color: '#333',
-  backgroundColor: '#fff',
-  marginBottom: 16,
-  boxShadow: '0px 2px 4px rgba(0,0,0,0.05)', // subtle shadow
+imageContainer: {
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  imageWrapper: {
+    position: 'relative',
+  },
+  image: { 
+    width: '100%', 
+    height: 150, 
+    borderRadius: 12,
+    resizeMode: 'cover',
+  },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  imageOverlayText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  imagePlaceholder: {
+    height: 150,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 2,
+    borderColor: '#e1e1e1',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imagePlaceholderText: {
+    color: '#999',
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  buttonContainer: {
+    paddingHorizontal: 20,
+    marginTop: 30,
+  },
+  saveButton: {
+    backgroundColor: '#6C3483',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#6C3483',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  saveButtonText: { 
+    color: '#fff', 
+    fontWeight: '600', 
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  cancelButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#6C3483',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#6C3483',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  webSelect: {
+  width: '100%',
+  height: 56,
+  borderWidth: 1,
+  borderColor: '#e1e1e1',
+  borderRadius: 12,
+  paddingHorizontal: 16,
+  fontSize: 16,
+  color: '#333',
+  backgroundColor: '#fff',
+  marginBottom: 16,
+  boxShadow: '0px 2px 4px rgba(0,0,0,0.05)', 
 },
-
 });

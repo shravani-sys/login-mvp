@@ -14,124 +14,75 @@ import { Calendar } from 'react-native-calendars';
 
 const CalenderScreen = ({ navigation }) => {
   const [currentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
   const [loading, setLoading] = useState(false);
   const [employeesOnLeave, setEmployeesOnLeave] = useState(0);
-  const [appointmentsByDate, setAppointmentsByDate] = useState({});
   const [selectedDateAppointments, setSelectedDateAppointments] = useState([]);
 
-  const BASE_URL = 'http://localhost:5000'; 
+  const BASE_URL = 'http://192.168.106.225:5000'; // replace with your IP if needed
 
-  // Fetch appointments from backend
-  const fetchCalendarData = async (month, year) => {
+  // Fetch appointments for a specific date
+  const fetchAppointmentsByDate = async (date) => {
     try {
       setLoading(true);
-      const response = await fetch(`${BASE_URL}/api/calendar?month=${month}&year=${year}`);
-      
+      const response = await fetch(`${BASE_URL}/api/appointments?date=${date}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
       const data = await response.json();
-      
-      // Organize appointments by date
-      const appointmentsByDateMap = {};
-      if (data.appointments) {
-        data.appointments.forEach(appointment => {
-          const dateKey = appointment.date;
-          if (!appointmentsByDateMap[dateKey]) {
-            appointmentsByDateMap[dateKey] = [];
-          }
-          appointmentsByDateMap[dateKey].push({
-            id: appointment.id,
-            title: appointment.title || appointment.customerName,
-            time: appointment.time,
-            service: appointment.service,
-            stylist: appointment.stylist,
-            notes: appointment.notes,
-            color: '#8B5CF6'
-          });
-        });
+      if (data.success) {
+        const formattedAppointments = data.appointments.map((appointment) => ({
+          id: appointment.id,
+          title: appointment.title || appointment.customerName,
+          time: appointment.time,
+          service: appointment.service,
+          stylist: appointment.stylist,
+          notes: appointment.notes,
+          color: '#8B5CF6',
+        }));
+        setSelectedDateAppointments(formattedAppointments);
+      } else {
+        setSelectedDateAppointments([]);
       }
-      
-      setAppointmentsByDate(appointmentsByDateMap);
-      setEmployeesOnLeave(data.employeesOnLeave || 0);
-      
-      // Update selected date appointments 
-      const selectedMonth = new Date(selectedDate).getMonth() + 1;
-      const selectedYear = new Date(selectedDate).getFullYear();
-      if (selectedMonth === month && selectedYear === year) {
-        setSelectedDateAppointments(appointmentsByDateMap[selectedDate] || []);
-      }
-      
     } catch (error) {
-      console.error('Error fetching calendar data:', error);
-      Alert.alert('Error', 'Failed to load calendar data. Please check your connection.');
+      console.error('Error fetching appointments:', error);
+      setSelectedDateAppointments([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch calendar data for specific date
-  const fetchCalendarDataForDate = async (date) => {
-    try {
-      const dateObj = new Date(date);
-      const day = dateObj.getDate();
-      const month = dateObj.getMonth() + 1;
-      const year = dateObj.getFullYear();
-      
-      const response = await fetch(`${BASE_URL}/api/calendar/date?date=${day}&month=${month}&year=${year}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      const formattedAppointments = data.appointments.map(appointment => ({
-        id: appointment.id,
-        title: appointment.title || appointment.customerName,
-        time: appointment.time,
-        service: appointment.service,
-        stylist: appointment.stylist,
-        notes: appointment.notes,
-        color: '#8B5CF6'
-      }));
-      
-      setSelectedDateAppointments(formattedAppointments);
-      
-    } catch (error) {
-      console.error('Error fetching calendar data for date:', error);
-      setSelectedDateAppointments([]);
-    }
+  // Handle date selection
+  const handleDateSelect = (day) => {
+    setSelectedDate(day.dateString);
+    fetchAppointmentsByDate(day.dateString);
   };
 
-  // Load calendar data when component mounts
+  // Load today's appointments on mount
   useEffect(() => {
-    const currentMonth = currentDate.getMonth() + 1;
-    const currentYear = currentDate.getFullYear();
-    fetchCalendarData(currentMonth, currentYear);
+    fetchAppointmentsByDate(selectedDate);
   }, []);
 
-  // Generate marked dates for the calendar
+  // Generate marked dates for calendar
   const getMarkedDates = () => {
     const marked = {};
-    
-    Object.keys(appointmentsByDate).forEach(date => {
-      if (appointmentsByDate[date].length > 0) {
-        marked[date] = {
-          marked: true,
-          dotColor: '#8B5CF6',
-        };
-      }
-    });
-
-    marked[selectedDate] = {
-      ...marked[selectedDate],
-      selected: true,
-      selectedColor: '#8B5CF6',
-      selectedTextColor: '#FFFFFF',
-    };
+    if (selectedDateAppointments.length > 0) {
+      marked[selectedDate] = {
+        marked: true,
+        dotColor: '#8B5CF6',
+        selected: true,
+        selectedColor: '#8B5CF6',
+        selectedTextColor: '#FFFFFF',
+      };
+    } else {
+      marked[selectedDate] = {
+        selected: true,
+        selectedColor: 'rgba(139, 92, 246, 0.2)',
+        selectedTextColor: '#8B5CF6',
+      };
+    }
 
     const today = new Date().toISOString().split('T')[0];
     if (today !== selectedDate) {
@@ -146,36 +97,37 @@ const CalenderScreen = ({ navigation }) => {
     return marked;
   };
 
-  const handleDateSelect = (day) => {
-    setSelectedDate(day.dateString);
-    fetchCalendarDataForDate(day.dateString);
-  };
-
   const handleMonthChange = (month) => {
-    fetchCalendarData(month.month, month.year);
+    // Optional: Fetch month data if needed
   };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    const fullDaysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const fullDaysOfWeek = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
     const day = fullDaysOfWeek[date.getDay()];
-    
+
     return {
       dayName: day.substring(0, 3),
       dayNumber: date.getDate(),
-      fullDate: date.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      })
+      fullDate: date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
     };
   };
 
-  // Navigate back ✅
   const handleGoBack = () => {
     navigation.navigate('Dashboard');
-    // or navigation.goBack();
   };
 
   const renderAppointment = (appointment) => (
@@ -241,33 +193,6 @@ const CalenderScreen = ({ navigation }) => {
               arrowColor: '#000',
               monthTextColor: '#000',
               indicatorColor: '#8B5CF6',
-              textDayFontFamily: 'System',
-              textMonthFontFamily: 'System',
-              textDayHeaderFontFamily: 'System',
-              textDayFontWeight: '400',
-              textMonthFontWeight: '600',
-              textDayHeaderFontWeight: '500',
-              textDayFontSize: 14,
-              textMonthFontSize: 18,
-              textDayHeaderFontSize: 14,
-              'stylesheet.calendar.header': {
-                week: {
-                  marginTop: 5,
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  backgroundColor: '#D3D3D3',
-                },
-              },
-              'stylesheet.day.basic': {
-                today: {
-                  backgroundColor: 'rgba(139, 92, 246, 0.2)',
-                  borderRadius: 16,
-                },
-                selected: {
-                  backgroundColor: '#8B5CF6',
-                  borderRadius: 16,
-                },
-              },
             }}
             firstDay={1}
             enableSwipeMonths={true}
@@ -277,20 +202,30 @@ const CalenderScreen = ({ navigation }) => {
 
         {/* Employee Leave Counter */}
         <View style={styles.leaveCounter}>
-          <Text style={styles.leaveText}>Employee on Leave Today : {employeesOnLeave}</Text>
+          <Text style={styles.leaveText}>
+            Employee on Leave Today : {employeesOnLeave}
+          </Text>
         </View>
 
         {/* Appointments */}
         {selectedDateAppointments.length > 0 && (
           <View style={styles.eventsContainer}>
             <View style={styles.dateLabel}>
-              <View style={[styles.dateLabelCircle, { backgroundColor: '#8B5CF6' }]}>
-                <Text style={styles.dateLabelText}>{formattedSelectedDate.dayNumber}</Text>
+              <View
+                style={[styles.dateLabelCircle, { backgroundColor: '#8B5CF6' }]}
+              >
+                <Text style={styles.dateLabelText}>
+                  {formattedSelectedDate.dayNumber}
+                </Text>
               </View>
-              <Text style={styles.dayNameText}>{formattedSelectedDate.dayName}</Text>
-              <Text style={styles.fullDateText}>{formattedSelectedDate.fullDate}</Text>
+              <Text style={styles.dayNameText}>
+                {formattedSelectedDate.dayName}
+              </Text>
+              <Text style={styles.fullDateText}>
+                {formattedSelectedDate.fullDate}
+              </Text>
             </View>
-            
+
             <View style={styles.eventsList}>
               <Text style={styles.appointmentsHeader}>
                 Appointments ({selectedDateAppointments.length})
@@ -304,15 +239,24 @@ const CalenderScreen = ({ navigation }) => {
         {selectedDateAppointments.length === 0 && !loading && (
           <View style={styles.noEventsContainer}>
             <View style={styles.dateLabel}>
-              <View style={[styles.dateLabelCircle, { backgroundColor: '#666' }]}>
-                <Text style={styles.dateLabelText}>{formattedSelectedDate.dayNumber}</Text>
+              <View
+                style={[styles.dateLabelCircle, { backgroundColor: '#666' }]}
+              >
+                <Text style={styles.dateLabelText}>
+                  {formattedSelectedDate.dayNumber}
+                </Text>
               </View>
-              <Text style={styles.dayNameText}>{formattedSelectedDate.dayName}</Text>
-              <Text style={styles.fullDateText}>{formattedSelectedDate.fullDate}</Text>
+              <Text style={styles.dayNameText}>
+                {formattedSelectedDate.dayName}
+              </Text>
+              <Text style={styles.fullDateText}>
+                {formattedSelectedDate.fullDate}
+              </Text>
             </View>
             <View style={styles.noEventsCard}>
-              <Text style={styles.noEventsText}>No appointments scheduled for this day</Text>
-              {/* Removed Book Appointment button ✅ */}
+              <Text style={styles.noEventsText}>
+                No appointments scheduled for this day
+              </Text>
             </View>
           </View>
         )}
@@ -370,7 +314,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
   },
-  calendar: { borderRadius: 8 },
   leaveCounter: {
     backgroundColor: '#FFF',
     marginHorizontal: 16,
