@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
-import PopupAlert from './PopupAlert'; // ✅ Importing popup
+import PopupAlert from './PopupAlert'; 
 
 export default function SignupScreen({ navigation }) {
   const [formData, setFormData] = useState({
@@ -29,19 +29,20 @@ export default function SignupScreen({ navigation }) {
   });
 
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const backendUrl = 'http://10.21.202.225:5000/signup';
+  const backendUrl = 'http://192.168.106.225:5000/signup';
 
-  const [popupVisible, setPopupVisible] = useState(false); // ✅ Popup state
-  const [popupMessage, setPopupMessage] = useState('');
+ const [popupVisible, setPopupVisible] = useState(false);
+const [popupMessage, setPopupMessage] = useState('');
+const [popupTitle, setPopupTitle] = useState('');
+const [popupType, setPopupType] = useState('info'); // 'success' | 'error'
 
-  const showAlert = (title, message) => {
-    if (Platform.OS === 'web') {
-      setPopupMessage(`${title}: ${message}`);
-      setPopupVisible(true);
-    } else {
-      Alert.alert(title, message);
-    }
-  };
+ const showAlert = (title, message, type = 'error') => {
+  setPopupTitle(title);
+  setPopupMessage(message);
+  setPopupType(type);
+  setPopupVisible(true);
+};
+
 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
@@ -110,18 +111,9 @@ export default function SignupScreen({ navigation }) {
 
       const data = await response.json();
       console.log('Signup response:', data);
+showAlert('Welcome!', data.message || 'Signup successful!', 'success');
 
-      if (Platform.OS === 'web') {
-        setPopupMessage(`Success: ${data.message || 'Signup successful!'}`);
-        setPopupVisible(true);
-      } else {
-        Alert.alert(
-          'Success',
-          data.message || 'Signup successful!',
-          [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
-          { cancelable: false }
-        );
-      }
+setPopupVisible(true);
     } catch (error) {
       console.error('Signup Error:', error);
       showAlert('Network Error', 'Could not reach the server.');
@@ -219,15 +211,23 @@ export default function SignupScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* ✅ Reusable popup */}
-      <PopupAlert
-        visible={popupVisible}
-        message={popupMessage}
-        onClose={() => {
-          setPopupVisible(false);
-          if (popupMessage.startsWith('Success')) navigation.navigate('Login');
-        }}
-      />
+      {/*  Reusable popup */}
+ <PopupAlert
+  visible={popupVisible}
+  title={popupTitle}
+  message={popupMessage}
+  type={popupType}
+  buttonText={popupType === 'success' ? 'Go to Login' : 'OK'}
+  buttonAction={() => {
+    setPopupVisible(false);
+    if (popupType === 'success') {
+      navigation.navigate('Login');
+    }
+  }}
+/>
+
+
+
     </ScrollView>
   );
 }
